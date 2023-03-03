@@ -1,6 +1,7 @@
 package testscripts;
 
 import java.util.List;
+import java.util.Map;
 
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
@@ -130,37 +131,84 @@ public class CreateBookingTest {
 		Assert.assertEquals(res.jsonPath().getString(object + "bookingdates.checkout"),
 				payload.getBookingdates().getCheckout());
 	}
-	
+
 	@Test(enabled = false)
 	public void getSpecificBookingIDDeserialized() {
-		//int bookingID = 3453;
+		// int bookingID = 3453;
 		Response res = RestAssured.given().headers("Accept", "application/json").when().get("/booking/" + bookingID);
 		System.out.println("Response from GET is: " + res.asPrettyString());
 		Assert.assertEquals(res.getStatusCode(), Status_Code.OK);
-		pojowithshortcuts.request.createbooking.CreateBookingRequest resBody = res.as(pojowithshortcuts.request.createbooking.CreateBookingRequest.class);
+		pojowithshortcuts.request.createbooking.CreateBookingRequest resBody = res
+				.as(pojowithshortcuts.request.createbooking.CreateBookingRequest.class);
 		System.out.println("Deserialized response body: " + resBody);
 		Assert.assertEquals(resBody.firstname, payload.firstname);
 		Assert.assertEquals(resBody.lastname, payload.lastname);
 		Assert.assertTrue(resBody.equals(payload));
 	}
-	
-	@Test(enabled = true)
+
+	@Test(enabled = false)
 	public void updateBookingIDTest() {
-		//int bookingID = 3453;
+		// int bookingID = 3453;
 		payload.firstname = "Kirsten";
-		Response res = RestAssured.given().
-				headers("Accept", "application/json")
-				.headers("Content-Type", "application/json")
-				.headers("Cookie", "token=" + token)
-				.body(payload)
-				.when()
+		Response res = RestAssured.given().headers("Accept", "application/json")
+				.headers("Content-Type", "application/json").headers("Cookie", "token=" + token).body(payload).when()
 				.put("/booking/" + bookingID);
 		System.out.println("Response from PUT is: " + res.asPrettyString());
 		Assert.assertEquals(res.getStatusCode(), Status_Code.OK);
-		pojowithshortcuts.request.createbooking.CreateBookingRequest resBody = res.as(pojowithshortcuts.request.createbooking.CreateBookingRequest.class);
+		pojowithshortcuts.request.createbooking.CreateBookingRequest resBody = res
+				.as(pojowithshortcuts.request.createbooking.CreateBookingRequest.class);
 		System.out.println("Deserialized response body: " + resBody);
 		Assert.assertTrue(resBody.equals(payload));
 	}
-	
-	
+
+	@Test(enabled = false)
+	public void phoneNumbersTypeTest() {
+		RestAssured.baseURI = "https://0e686aed-6e36-4047-bcb4-a2417455c2d7.mock.pstmn.io";
+
+		Response res = RestAssured.given().headers("Accept", "application/json").when().get("/test");
+
+		System.out.println(res.asPrettyString());
+		List<Object> listOfType = res.jsonPath().getList("phoneNumbers");
+		System.out.println(listOfType.size());
+		System.out.println(listOfType);
+		for (Object obj : listOfType) {
+			Map<String, String> mapOfType = (Map<String, String>) obj;
+			if (mapOfType.get("type").equals("iPhone"))
+				Assert.assertTrue(mapOfType.get("number").startsWith("3456"));
+			else if (mapOfType.get("type").equals("home"))
+				Assert.assertTrue(mapOfType.get("number").startsWith("123"));
+		}
+
+	}
+
+	@Test(enabled = false)
+	public void partialUpdateBookingTest() {
+		// int bookingID = 3453;
+		payload.setFirstname("Ronan");
+		payload.setLastname("Smith");
+		Response res = RestAssured.given().headers("Accept", "application/json")
+				.headers("Content-Type", "application/json").headers("Cookie", "token=" + token)
+				.body("{\r\n" + "    \"firstname\" : \"Ronan\",\r\n" + "    \"lastname\" : \"Smith\"\r\n" + "}").when()
+				.patch("/booking/" + bookingID).then().log().all().extract().response();
+		System.out.println("Response from PATCH is: " + res.asPrettyString());
+		Assert.assertEquals(res.getStatusCode(), Status_Code.OK);
+		pojowithshortcuts.request.createbooking.CreateBookingRequest resPayload = new pojowithshortcuts.request.createbooking.CreateBookingRequest();
+		resPayload = res.as(pojowithshortcuts.request.createbooking.CreateBookingRequest.class);
+		Assert.assertTrue(resPayload.equals(payload));
+	}
+
+	@Test(enabled = true)
+	public void deleteBookingTest() {
+		// int bookingID = 3453;
+		Response res = RestAssured.given().headers("Content-Type", "application/json")
+				.headers("Cookie", "token=" + token).when().delete("/booking/" + bookingID).then().log().all().extract()
+				.response();
+		System.out.println("Response from DELETE is: " + res.asPrettyString());
+		Assert.assertEquals(res.getStatusCode(), Status_Code.CREATED);
+
+		Response getRes = RestAssured.given().when().get("/booking");
+		List<Integer> bookingIDslist = getRes.jsonPath().getList("bookingid");
+		Assert.assertFalse(bookingIDslist.contains(bookingID));
+	}
+
 }
